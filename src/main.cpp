@@ -174,6 +174,12 @@ int main() {
   vector<double> map_waypoints_dx;
   vector<double> map_waypoints_dy;
 
+
+  //Variables
+
+  double velocity = 50;
+  int lane = 1 ;
+  //
   // Waypoint map to read from
   string map_file_ = "../data/highway_map.csv";
   // The max s value before wrapping around the track back to 0
@@ -201,7 +207,7 @@ int main() {
   	map_waypoints_dy.push_back(d_y);
   }
 
-  h.onMessage([&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
+  h.onMessage([&lane,&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy,&velocity](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -244,10 +250,43 @@ int main() {
           	vector<double> next_y_vals;
 
 
+
+
+
+
           	// TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
 
             int prev_size = previous_path_x.size();
 
+
+            //Sensor Fusion::::
+
+            if(prev_size>0)
+            {
+                car_s = end_path_s;
+            }
+
+            for(int i=0;i<sensor_fusion.size();i++)
+            {
+                float d = sensor_fusion[i][6];
+                if(d>4*lane && d<4*(lane+1)){
+                    double vx = sensor_fusion[i][3];
+                    double vy = sensor_fusion[i][4];
+                    double check_speed = sqrt(vx*vx+vy*vy);
+                    double check_car_s = sensor_fusion[i][5];
+
+                    check_car_s += (double)prev_size*.02*check_speed;
+
+                    if(check_car_s>car_s && (check_car_s-car_s)<30)
+                    {
+                        velocity = check_speed;
+                    }
+
+                }
+            }
+
+
+            // Path generation
             vector<double> ptsx;
             vector<double> ptsy;
             double ref_x = car_x;
@@ -278,9 +317,9 @@ int main() {
                 ptsy.push_back(ref_y);
             }
 
-            vector<double> xy = getXY(car_s+30,car_d,map_waypoints_s,map_waypoints_x,map_waypoints_y);
-            vector<double> xy2 = getXY(car_s+60,car_d,map_waypoints_s,map_waypoints_x,map_waypoints_y);
-            vector<double> xy3 = getXY(car_s+90,car_d,map_waypoints_s,map_waypoints_x,map_waypoints_y);
+            vector<double> xy = getXY(car_s+30,2+4*lane,map_waypoints_s,map_waypoints_x,map_waypoints_y);
+            vector<double> xy2 = getXY(car_s+60,2+4*lane,map_waypoints_s,map_waypoints_x,map_waypoints_y);
+            vector<double> xy3 = getXY(car_s+90,2+4*lane,map_waypoints_s,map_waypoints_x,map_waypoints_y);
 
             ptsx.push_back(xy[0]);
             ptsy.push_back(xy[1]);
@@ -305,7 +344,6 @@ int main() {
             tk::spline spl;
             spl.set_points(ptsx,ptsy);
 
-            double velocity = 30;
             for(int i=0;i<previous_path_x.size();i++)
             {
                 next_x_vals.push_back(previous_path_x[i]);
