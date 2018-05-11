@@ -8,6 +8,7 @@
 #include "Eigen-3.3/Eigen/Core"
 #include "Eigen-3.3/Eigen/QR"
 #include "json.hpp"
+#include "spline.h"
 
 using namespace std;
 
@@ -245,13 +246,101 @@ int main() {
 
           	// TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
 
-          	//initial test; will be removed
-          	double dist_inc = 0.5;
-            for(int i = 0; i < 50; i++)
-            {
-              next_x_vals.push_back(car_x+(dist_inc*i)*cos(deg2rad(car_yaw)));
-              next_y_vals.push_back(car_y+(dist_inc*i)*sin(deg2rad(car_yaw)));
+            int prev_size = previous_path_x.size();
+
+            vector<double> ptsx;
+            vector<double> ptsy;
+            double ref_x = car_x;
+            double ref_y = car_y;
+            double ref_yaw = deg2rad(car_yaw);
+            if(prev_size<2){
+                double prev_car_x = car_x - cos(car_yaw);
+                double prev_car_y = car_y - sin(car_yaw);
+                ptsx.push_back(prev_car_x);
+                ptsx.push_back(car_x);
+
+                ptsy.push_back(prev_car_y);
+                ptsy.push_back(car_y);
+
+            }else{
+                ref_x = previous_path_x[prev_size-1];
+                ref_y = previous_path_y[prev_size-1];
+
+                double prev_ref_x = previous_path_x[prev_size-2];
+                double prev_ref_y = previous_path_y[prev_size-2];
+
+                double ref_yaw = atan2(ref_y-prev_ref_y,ref_x-prev_ref_x);
+
+                ptsx.push_back(prev_ref_x);
+                ptsx.push_back(ref_x);
+
+                ptsy.push_back(prev_ref_y);
+                ptsy.push_back(ref_y);
             }
+
+            vector<double> xy = getXY(car_s+30,car_d,map_waypoints_s,map_waypoints_x,map_waypoints_y);
+            vector<double> xy2 = getXY(car_s+60,car_d,map_waypoints_s,map_waypoints_x,map_waypoints_y);
+            vector<double> xy3 = getXY(car_s+90,car_d,map_waypoints_s,map_waypoints_x,map_waypoints_y);
+
+            ptsx.push_back(xy[0]);
+            ptsy.push_back(xy[1]);
+
+            ptsx.push_back(xy2[0]);
+            ptsy.push_back(xy2[1]);
+
+            ptsx.push_back(xy3[0]);
+            ptsy.push_back(xy3[1]);
+
+
+
+            for(int i=0;i<ptsx.size();i++)
+            {
+                double shiftx = ptsx[i] - ref_x;
+                double shifty = ptsy[i] - ref_y;
+
+                ptsx[i] = shiftx*cos(-ref_yaw)-shifty*sin(-ref_yaw);
+                ptsy[i] = shiftx*sin(-ref_yaw)+shifty*cos(-ref_yaw);
+            }
+
+            tk::spline spl;
+            spl.set_points(ptsx,ptsy);
+
+            double velocity = 30;
+            for(int i=0;i<previous_path_x.size();i++)
+            {
+                next_x_vals.push_back(previous_path_x[i]);
+                next_y_vals.push_back(previous_path_y[i]);
+            }
+
+            double target_x = 30;
+            double target_y = spl(target_x);
+            double target_dist = sqrt(target_x*target_x+target_y*target_y);
+
+            double x_add = 0;
+            for(int i=0;i<=50-prev_size;i++)
+            {
+                double N = (target_dist/(.02*velocity/2.24));
+                double x_point = x_add+target_x / N;
+                double y_point = spl(x_point);
+
+                x_add = x_point;
+
+                double x_temp = x_point;
+                double y_temp = y_point;
+
+                x_point = x_temp *cos(ref_yaw) - y_temp *sin(ref_yaw);
+                y_point = x_temp *sin(ref_yaw) + y_temp*cos(ref_yaw);
+
+                x_point += ref_x;
+                y_point += ref_y;
+
+                next_x_vals.push_back(x_point);
+                next_y_vals.push_back(y_point);
+            }
+
+
+            //
+
 
           	msgJson["next_x"] = next_x_vals;
           	msgJson["next_y"] = next_y_vals;
