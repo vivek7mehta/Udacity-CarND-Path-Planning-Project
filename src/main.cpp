@@ -177,7 +177,7 @@ int main() {
 
   //Variables
 
-  double velocity = 50;
+  double velocity = 0;
   int lane = 1 ;
   //
   // Waypoint map to read from
@@ -257,7 +257,7 @@ int main() {
           	// TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
 
             int prev_size = previous_path_x.size();
-
+		
 
             //Sensor Fusion::::
 
@@ -265,26 +265,48 @@ int main() {
             {
                 car_s = end_path_s;
             }
-
+	   bool too_close[] = {false,false,false};
+	   bool too_close_back[] = {false,false,false};
             for(int i=0;i<sensor_fusion.size();i++)
             {
                 float d = sensor_fusion[i][6];
-                if(d>4*lane && d<4*(lane+1)){
-                    double vx = sensor_fusion[i][3];
-                    double vy = sensor_fusion[i][4];
-                    double check_speed = sqrt(vx*vx+vy*vy);
-                    double check_car_s = sensor_fusion[i][5];
+		for(int j=0;j<3;j++){
+		
+			if(d>4*j && d<4*(j+1)){
+		            double vx = sensor_fusion[i][3];
+		            double vy = sensor_fusion[i][4];
+		            double check_speed = sqrt(vx*vx+vy*vy);
+		            double check_car_s = sensor_fusion[i][5];
 
-                    check_car_s += (double)prev_size*.02*check_speed;
+		            check_car_s += (double)prev_size*.02*check_speed;
 
-                    if(check_car_s>car_s && (check_car_s-car_s)<30)
-                    {
-                        velocity = check_speed;
-                    }
+		            if(check_car_s>car_s && (check_car_s-car_s)<30)
+		            {
+		                //velocity = check_speed;
+				too_close[j] = true;
+		            }
+			    if(check_car_s<car_s && (car_s-check_car_s)<10){
+				too_close_back[j] = true;
+			    }
 
-                }
+		        }
+		}
             }
 
+	if(too_close[lane]){
+		if(lane==0){
+			if(!too_close[1] && !too_close_back[1]){lane=1;}
+		}else if(lane==1){
+			if(!too_close[0] && !too_close_back[0]){lane=0;}
+			else if(!too_close[2] && !too_close_back[2]){lane=2;}
+		}
+		else{
+			if(!too_close[1] && !too_close_back[1]){lane=1;}
+		}
+		velocity -= 0.5;
+	}else if(velocity<49){
+		velocity += 0.5;
+	}
 
             // Path generation
             vector<double> ptsx;
