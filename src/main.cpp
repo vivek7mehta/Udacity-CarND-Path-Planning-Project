@@ -280,12 +280,12 @@ int main() {
 
 		            check_car_s += (double)prev_size*.02*check_speed;
 
-		            if(check_car_s>car_s && (check_car_s-car_s)<30)
+		            if(check_car_s>car_s && (check_car_s-car_s)<40)
 		            {
 		                //velocity = check_speed;
 				too_close[j] = true;
 		            }
-			    if(check_car_s<car_s && (car_s-check_car_s)<10){
+			    if(check_car_s<car_s && (car_s-check_car_s)<15){
 				too_close_back[j] = true;
 			    }
 
