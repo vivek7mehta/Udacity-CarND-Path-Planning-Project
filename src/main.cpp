@@ -257,7 +257,7 @@ int main() {
           	// TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
 
             int prev_size = previous_path_x.size();
-		
+
 
             //Sensor Fusion::::
 
@@ -271,7 +271,7 @@ int main() {
             {
                 float d = sensor_fusion[i][6];
 		for(int j=0;j<3;j++){
-		
+
 			if(d>4*j && d<4*(j+1)){
 		            double vx = sensor_fusion[i][3];
 		            double vy = sensor_fusion[i][4];
@@ -303,9 +303,9 @@ int main() {
 		else{
 			if(!too_close[1] && !too_close_back[1]){lane=1;}
 		}
-		velocity -= 0.5;
+		velocity -= 0.4;
 	}else if(velocity<49){
-		velocity += 0.5;
+		velocity += 0.4;
 	}
 
             // Path generation
